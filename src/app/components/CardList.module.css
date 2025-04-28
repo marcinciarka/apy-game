@@ -10,6 +10,7 @@
 
 @media (max-width: 600px) {
   .cardList {
+    display: grid;
     grid-template-columns: 1fr 1fr;
     max-width: 98vw;
     margin: 12px 0;
@@ -18,6 +19,7 @@
 
 @media (max-width: 400px) {
   .cardList {
+    display: grid;
     grid-template-columns: 1fr 1fr 1fr;
   }
 }

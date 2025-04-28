@@ -64,8 +64,8 @@ export function useGameLogic({
   const [streak, setStreak] = useState(0);
   const [bestStreak, setBestStreak] = useState(0);
   const [round, setRound] = useState(0);
-  const [timeLeft, setTimeLeft] = useState(300);
-  const [timer, setTimer] = useState(300);
+  const [timeLeft, setTimeLeft] = useState(3);
+  const [timer, setTimer] = useState(3);
   const [gameOver, setGameOver] = useState(false);
   const [scoreAnim, setScoreAnim] = useState(false);
   const [streakAnim, setStreakAnim] = useState(false);
