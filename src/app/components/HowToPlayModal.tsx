@@ -15,7 +15,7 @@ const HowToPlayModal: React.FC<HowToPlayModalProps> = ({ onClose }) => (
         <li>Wrong answers end the game.</li>
         <li>Streaks of 2+ correct answers give bonus points.</li>
         <li>Game gets faster each round.</li>
-        <li>"Watch AI Play" to see a perfect run!</li>
+        <li>&quot;Watch AI Play&quot; to see a perfect run!</li>
       </ul>
       <button className={styles.closeBtn} onClick={onClose}>
         Close
