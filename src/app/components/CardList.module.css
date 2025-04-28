@@ -1,0 +1,9 @@
+.cardList {
+  width: 100%;
+  max-width: 420px;
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin: 24px 0;
+  position: relative;
+}
