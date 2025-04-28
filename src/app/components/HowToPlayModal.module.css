@@ -91,3 +91,24 @@
   transform: translateY(-2px) scale(1.04);
   outline: none;
 }
+
+@media (max-width: 600px) {
+  .modal {
+    padding: 12px 4px;
+    font-size: 15px;
+  }
+
+  .title {
+    font-size: 18px;
+  }
+
+  .list {
+    font-size: 15px;
+  }
+
+  .closeBtn {
+    width: 100%;
+    font-size: 15px;
+    padding: 10px 0;
+  }
+}

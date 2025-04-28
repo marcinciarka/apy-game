@@ -51,3 +51,25 @@
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
   transition: background 0.2s;
 }
+
+@media (max-width: 600px) {
+  .container {
+    padding: 8px;
+  }
+
+  .title {
+    font-size: 22px;
+  }
+
+  .description {
+    font-size: 15px;
+    margin-bottom: 18px;
+  }
+
+  .button,
+  .buttonHowTo {
+    width: 100%;
+    font-size: 16px;
+    padding: 12px 0;
+  }
+}

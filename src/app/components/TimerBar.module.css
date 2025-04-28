@@ -27,3 +27,16 @@
   letter-spacing: 0.5px;
   user-select: none;
 }
+
+@media (max-width: 600px) {
+  .timerBarOuter {
+    width: 95vw;
+    min-width: 0;
+    height: 18px;
+  }
+
+  .timerText {
+    font-size: 12px;
+    padding: 0 6px;
+  }
+}
