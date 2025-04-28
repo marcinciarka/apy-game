@@ -1,4 +1,4 @@
-import React from "react";
+import React, { RefObject } from "react";
 import Card from "./Card";
 import { CardData } from "../types";
 import styles from "./CardList.module.css";
@@ -7,7 +7,8 @@ interface CardListProps {
   cards: CardData[];
   selected: number | null;
   isAI: boolean;
-  onSelect: (idx: number) => void;
+  onSelect: (idx: number, event: React.MouseEvent<HTMLDivElement>) => void;
+  cardRefs: RefObject<HTMLDivElement[]>; // Add prop for refs array
 }
 
 const CardList: React.FC<CardListProps> = ({
@@ -15,15 +16,23 @@ const CardList: React.FC<CardListProps> = ({
   selected,
   isAI,
   onSelect,
+  cardRefs, // Destructure the refs prop
 }) => (
   <div className={styles.cardList}>
     {cards.map((card, i) => (
       <Card
+        // Assign the ref from the array to each card
+        ref={(el) => {
+          if (cardRefs.current) {
+            cardRefs.current[i] = el as HTMLDivElement;
+          }
+        }}
         key={`${i}_${card.apy}`}
+        data-card-index={i}
         apy={card.apy}
         trendData={card.trendData}
         selected={selected === i}
-        onClick={() => !isAI && onSelect(i)}
+        onClick={(event) => !isAI && onSelect(i, event)}
         highlight={
           selected !== null &&
           i ===

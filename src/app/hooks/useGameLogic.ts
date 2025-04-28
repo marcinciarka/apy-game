@@ -1,7 +1,8 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, createRef } from "react"; // Import createRef
 import { CardData } from "../types";
 import { generateCards } from "../helpers/gameHelpers";
 import { useAIPlayer } from "./useAIPlayer";
+import { playCorrectSound, playIncorrectSound } from "../helpers/audioHelpers"; // Import the correct and incorrect sound functions
 
 interface UseGameLogicProps {
   isAI: boolean;
@@ -44,6 +45,15 @@ function getRandomPastelColor() {
   return `hsl(${hue}, 60%, 70%)`;
 }
 
+// Define structure for flying APY state
+interface FlyingApyState {
+  id: number;
+  apy: number;
+  x: number;
+  y: number;
+  color: string;
+}
+
 export function useGameLogic({
   isAI,
   onGameOver,
@@ -71,6 +81,9 @@ export function useGameLogic({
   const [roundStartTime, setRoundStartTime] = useState<number>(Date.now());
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const prevStreakRef = useRef(streak);
+  const [flyingApys, setFlyingApys] = useState<FlyingApyState[]>([]);
+  const flyingApyIdCounter = useRef(0);
+  const cardRefs = useRef<HTMLDivElement[]>([]); // Ref to hold card DOM elements
 
   const validResponses = responseTimes.length > 1 ? responseTimes.slice(1) : [];
   const avgResponse =
@@ -101,57 +114,120 @@ export function useGameLogic({
     setResponseTimes([]);
   }, [nextRound]);
 
-  // Handle card selection
-  const handleSelect = useCallback(
-    (idx: number) => {
-      if (selected !== null || gameOver) return;
-      setSelected(idx);
-      const now = Date.now();
-      if (idx !== -1) {
-        setResponseTimes((times) => [...times, (now - roundStartTime) / 1000]);
+  // Ensure refs array has the correct size when cards change
+  useEffect(() => {
+    cardRefs.current = cardRefs.current.slice(0, cards.length);
+    for (let i = 0; i < cards.length; i++) {
+      // Ensure each index has a ref object, even if the element isn't mounted yet
+      if (!cardRefs.current[i]) {
+        cardRefs.current[i] = createRef<HTMLDivElement>().current!;
       }
-      const maxApy = Math.max(...cards.map((c) => c.apy));
-      const correctIdx = cards.findIndex((c) => c.apy === maxApy);
+    }
+  }, [cards]);
+
+  // Handle card selection - update signature to include event and aiCoords
+  const handleSelect = useCallback(
+    (
+      idx: number,
+      event?: React.MouseEvent<HTMLDivElement>,
+      aiCoords?: { x: number; y: number } // Add optional AI coordinates
+    ) => {
+      if (selected !== null || gameOver) return;
+
+      const currentCards = cards;
+      const maxApy = Math.max(...currentCards.map((c) => c.apy));
+      const correctIdx = currentCards.findIndex((c) => c.apy === maxApy);
+
+      let startX: number | null = null;
+      let startY: number | null = null;
+      let cardDataForAnim: CardData | null = null;
+
+      if (idx === correctIdx) {
+        cardDataForAnim = currentCards[idx];
+        if (event) {
+          // User click
+          startX = event.clientX;
+          startY = event.clientY;
+        } else if (aiCoords) {
+          // AI selection - Use provided coords
+          startX = aiCoords.x;
+          startY = aiCoords.y;
+        } else {
+          // Fallback if neither event nor aiCoords provided (shouldn't happen for correct idx)
+          console.warn(
+            `Correct selection at index ${idx} but no coordinates provided.`
+          );
+          startX = window.innerWidth / 2;
+          startY = window.innerHeight * 0.4;
+        }
+      }
+
+      setSelected(idx);
+
+      const now = Date.now();
+      const responseTime = (now - roundStartTime) / 1000;
+      const actualRemainingTime = Math.max(0, timer - responseTime);
+
+      if (idx !== -1) {
+        setResponseTimes((times) => [...times, responseTime]);
+      }
+
       let points = 0;
       let perfect = false;
+
       if (idx === correctIdx) {
-        points = Math.floor(100 * (timeLeft / timer) + 10);
+        playCorrectSound(actualRemainingTime, timer);
+        points = Math.floor(100 * (actualRemainingTime / timer) + 10);
         perfect = true;
+
+        nextRound();
+
+        if (startX !== null && startY !== null && cardDataForAnim !== null) {
+          const newId = flyingApyIdCounter.current++;
+          let apyColor = "#1a2233";
+          if (cardDataForAnim.apy >= 10) apyColor = "#1db954";
+          else if (cardDataForAnim.apy <= 3) apyColor = "#d7263d";
+          else if (cardDataForAnim.apy <= 5) apyColor = "rgb(120,40,40)";
+
+          setFlyingApys((prev) => [
+            ...prev,
+            {
+              id: newId,
+              apy: cardDataForAnim.apy,
+              x: startX!,
+              y: startY!,
+              color: apyColor,
+            },
+          ]);
+        }
       } else {
+        playIncorrectSound();
         points = -30;
         perfect = false;
+
+        setGameOver(true);
+        onGameOver({
+          score,
+          streak: bestStreak,
+          rounds: round,
+          lastCards: currentCards,
+          lastSelected: idx === -1 ? null : idx,
+          avgResponse,
+          timedOut: idx === -1,
+        });
       }
+
       setScore((s) =>
         Math.max(0, s + points + (perfect && streak >= 2 ? 5 : 0))
       );
       setStreak((s) => (perfect ? s + 1 : 0));
       setBestStreak((s) => (perfect ? Math.max(s, streak + 1) : s));
-      setTimeout(
-        () => {
-          if (idx === correctIdx) {
-            nextRound();
-          } else {
-            setGameOver(true);
-            onGameOver({
-              score,
-              streak: bestStreak,
-              rounds: round,
-              lastCards: cards,
-              lastSelected: idx === -1 ? null : idx,
-              avgResponse,
-              timedOut: idx === -1,
-            });
-          }
-        },
-        perfect ? 500 : 400
-      );
     },
     [
       selected,
       gameOver,
       roundStartTime,
       cards,
-      timeLeft,
       timer,
       streak,
       bestStreak,
@@ -162,6 +238,11 @@ export function useGameLogic({
       avgResponse,
     ]
   );
+
+  // Function to remove completed flying APY animations
+  const handleFlyingApyComplete = useCallback((id: number) => {
+    setFlyingApys((prev) => prev.filter((apy) => apy.id !== id));
+  }, []);
 
   // Timer logic
   useEffect(() => {
@@ -202,11 +283,14 @@ export function useGameLogic({
     ) {
       setStreakAnim(false);
       setTimeout(() => {
+        // Calculate scale based on round, capped at 3
+        const calculatedScale = Math.min(3, 1 + round * 0.05); // Adjust factor as needed
+
         setStreakAnimProps({
           angle: Math.random() * 60 - 30,
           offsetX: Math.random() * 60 - 30,
           offsetY: Math.random() * 30 - 15,
-          scale: 0.9 + Math.random() * 0.4,
+          scale: calculatedScale, // Use calculated scale
           label: getRandomLabel(),
           color: getRandomPastelColor(),
         });
@@ -216,13 +300,28 @@ export function useGameLogic({
     }
     prevStreakRef.current = streak;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [responseTimes]);
+  }, [responseTimes, round]); // Add round to dependency array
 
-  // AI integration
+  // AI integration - Use refs instead of querySelector
   useAIPlayer({
     enabled: isAI && !gameOver,
     cards,
-    onSelect: (idx) => handleSelect(idx),
+    onSelect: (idx) => {
+      const cardElement = cardRefs.current[idx]; // Get element from ref array
+      let coords = { x: window.innerWidth / 2, y: window.innerHeight * 0.4 }; // Fallback
+      if (cardElement) {
+        const rect = cardElement.getBoundingClientRect();
+        coords = {
+          x: rect.left + rect.width / 2,
+          y: rect.top + rect.height / 2,
+        };
+      } else {
+        console.warn(
+          `[useAIPlayer] Card ref for index ${idx} not found before calling handleSelect.`
+        );
+      }
+      handleSelect(idx, undefined, coords); // Call handleSelect with coords
+    },
     round,
   });
 
@@ -287,5 +386,8 @@ export function useGameLogic({
     onGameOver,
     isAI,
     handleSelect,
+    flyingApys,
+    handleFlyingApyComplete,
+    cardRefs, // Pass down the ref array
   };
 }

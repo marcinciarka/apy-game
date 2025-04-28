@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { startMusic, stopMusic } from "../helpers/musicHelper";
 import { CardData } from "../types";
 
 export function useHomeState() {
@@ -16,6 +17,14 @@ export function useHomeState() {
     undefined
   );
   const [timedOut, setTimedOut] = useState(false);
+
+  useEffect(() => {
+    if (screen === "game" || screen === "ai") {
+      startMusic();
+    } else if (screen === "over" || screen === "start") {
+      stopMusic();
+    }
+  }, [screen]);
 
   const handleGameOver = ({
     score,
